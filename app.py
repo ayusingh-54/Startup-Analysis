@@ -475,7 +475,7 @@ def main():
     st.markdown(
         """
         <div style='text-align: center; color: #666;'>
-            <p>📊 Indian Startup Ecosystem Dashboard | Data covers 2016-2020 | Built with Streamlit & Plotly</p>
+            <p>📊 Indian Startup Ecosystem Dashboard | Data covers 2016-2020 | Built By Ayush Singh </p>
         </div>
         """,
         unsafe_allow_html=True
