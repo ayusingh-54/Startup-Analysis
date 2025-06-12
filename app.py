@@ -1,12 +1,20 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import numpy as np
 from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
+
+# Try to import plotly with error handling
+try:
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    st.error("Plotly is not installed. Please install it using: pip install plotly")
+    st.stop()
 
 # Page config
 st.set_page_config(
@@ -46,15 +54,44 @@ st.markdown("""
 def load_data():
     """Load and cache the processed data"""
     try:
+        # Try to load processed data first
         df = pd.read_csv('startup_data_processed.csv')
         df['date'] = pd.to_datetime(df['date'])
         return df
     except FileNotFoundError:
-        # If processed file doesn't exist, process the original
-        from data_cleaning import clean_startup_data
-        df = clean_startup_data('startup_cleaned.csv')
-        df.to_csv('startup_data_processed.csv', index=False)
-        return df
+        try:
+            # If processed file doesn't exist, load and clean the original
+            df = pd.read_csv('startup_cleaned.csv')
+            
+            # Basic cleaning
+            df.columns = df.columns.str.strip().str.lower()
+            df['date'] = pd.to_datetime(df['date'], errors='coerce')
+            df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+            df['amount'] = df['amount'].fillna(0)
+            
+            # Extract year and month
+            df['year'] = df['date'].dt.year
+            df['month'] = df['date'].dt.month
+            
+            # Clean text columns
+            df['startup'] = df['startup'].astype(str).str.strip()
+            df['city'] = df['city'].astype(str).str.strip()
+            df['vertical'] = df['vertical'].astype(str).str.strip()
+            df['round'] = df['round'].astype(str).str.strip()
+            
+            # Remove rows with missing critical data
+            df = df.dropna(subset=['date', 'startup'])
+            
+            # Save processed data
+            df.to_csv('startup_data_processed.csv', index=False)
+            return df
+            
+        except FileNotFoundError:
+            st.error("Data file 'startup_cleaned.csv' not found. Please make sure the file exists in the project directory.")
+            st.stop()
+        except Exception as e:
+            st.error(f"Error loading data: {str(e)}")
+            st.stop()
 
 def create_funding_timeline(df):
     """Create interactive funding timeline"""
@@ -188,10 +225,21 @@ def create_sector_analysis(df):
 
 # Main app
 def main():
+    if not PLOTLY_AVAILABLE:
+        st.error("Plotly is required for this dashboard. Please install it and restart the app.")
+        return
+        
     st.markdown('<h1 class="main-header">🚀 Indian Startup Ecosystem Dashboard</h1>', unsafe_allow_html=True)
     
     # Load data
-    df = load_data()
+    try:
+        df = load_data()
+        if df.empty:
+            st.warning("No data available. Please check your data file.")
+            return
+    except Exception as e:
+        st.error(f"Failed to load data: {str(e)}")
+        return
     
     # Sidebar filters
     st.sidebar.header("🔍 Filters")
@@ -358,41 +406,51 @@ def main():
         st.header("🏙️ City Analysis")
         
         # City metrics
-        city_stats = filtered_df.groupby('city').agg({
-            'amount': 'sum',
-            'startup': 'nunique'
-        }).sort_values('amount', ascending=False).head(15)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Reset index to make city a column
-            city_funding_data = city_stats.reset_index()
-            fig_city_funding = px.bar(
-                city_funding_data,
-                x='city',
-                y='amount',
-                title="Top Cities by Total Funding",
-                labels={'city': 'City', 'amount': 'Total Funding (₹ Cr)'}
-            )
-            fig_city_funding.update_layout(xaxis_tickangle=45)
-            st.plotly_chart(fig_city_funding, use_container_width=True)
-        
-        with col2:
-            fig_city_startups = px.bar(
-                city_funding_data,
-                x='city',
-                y='startup',
-                title="Top Cities by Number of Startups",
-                labels={'city': 'City', 'startup': 'Number of Startups'},
-                color='startup',
-                color_continuous_scale='viridis'
-            )
-            fig_city_startups.update_layout(xaxis_tickangle=45)
-            st.plotly_chart(fig_city_startups, use_container_width=True)
-        
-        # Geographical scatter plot
-        st.plotly_chart(create_city_map(filtered_df), use_container_width=True)
+        try:
+            city_stats = filtered_df.groupby('city').agg({
+                'amount': 'sum',
+                'startup': 'nunique'
+            }).sort_values('amount', ascending=False).head(15)
+            
+            if city_stats.empty:
+                st.warning("No city data available for the selected filters.")
+                return
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Reset index to make city a column
+                city_funding_data = city_stats.reset_index()
+                fig_city_funding = px.bar(
+                    city_funding_data,
+                    x='city',
+                    y='amount',
+                    title="Top Cities by Total Funding",
+                    labels={'city': 'City', 'amount': 'Total Funding (₹ Cr)'},
+                    color='amount',
+                    color_continuous_scale='Blues'
+                )
+                fig_city_funding.update_layout(xaxis_tickangle=45, height=400)
+                st.plotly_chart(fig_city_funding, use_container_width=True)
+            
+            with col2:
+                fig_city_startups = px.bar(
+                    city_funding_data,
+                    x='city',
+                    y='startup',
+                    title="Top Cities by Number of Startups",
+                    labels={'city': 'City', 'startup': 'Number of Startups'},
+                    color='startup',
+                    color_continuous_scale='viridis'
+                )
+                fig_city_startups.update_layout(xaxis_tickangle=45, height=400)
+                st.plotly_chart(fig_city_startups, use_container_width=True)
+            
+            # Geographical scatter plot
+            st.plotly_chart(create_city_map(filtered_df), use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"Error creating city analysis: {str(e)}")
     
     with tab4:
         st.header("📈 Sector Analysis")
