@@ -492,7 +492,7 @@ def create_funding_predictor_ui():
                 
                 with comparison_col2:
                     difference = ((predicted_amount - avg_amount) / avg_amount * 100)
-                    st.metric("Sector Average", f"₹{avg_deal_size:.2f} Cr", f"{difference:.1f}%" if abs(difference) > 0.1 else "")
+                    st.metric("Sector Average", f"₹{avg_amount:.2f} Cr", f"{difference:.1f}%" if abs(difference) > 0.1 else "")
                 
                 with comparison_col3:
                     st.metric("Sector Maximum", f"₹{max_amount:.2f} Cr")
