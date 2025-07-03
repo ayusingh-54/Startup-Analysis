@@ -12,7 +12,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.feature_extraction.text import CountVectorizer
-import joblib
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -246,4 +245,5 @@ def train_and_save_model(data_path='startup_data_processed.csv'):
 if __name__ == "__main__":
     print("Starting model training process...")
     train_and_save_model()
+    print("Model training process completed!")
     print("Model training process completed!")
