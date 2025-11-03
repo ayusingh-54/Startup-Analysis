@@ -20,7 +20,7 @@ except ImportError:
     st.error("Plotly is not installed. Please install it using: pip install plotly")
     st.stop()
 
-# Page config
+# Page configs
 st.set_page_config(
     page_title="Indian Startup Ecosystem Analysis & Funding Predictor",
     page_icon="🚀",
@@ -46,6 +46,7 @@ st.markdown("""
     }
     .metric-card {
         background-color: #f0f2f6;
+            
         padding: 1rem;
         border-radius: 10px;
         border-left: 5px solid #1f77b4;
